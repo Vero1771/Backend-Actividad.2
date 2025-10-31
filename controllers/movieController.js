@@ -1,23 +1,22 @@
 const MovieStore = require('../models/movie');
 
 class MovieController {
-  // devuelve todos los movies (sin render)
   static index() {
-    return MovieStore.findAll();
+    return MovieStore.findAll().then(movies => movies);
   }
 
-  // datos necesarios para formulario nuevo (ninguno por ahora)
   static newFormData() {
     return {};
   }
 
   static create(data) {
     const { title, duration, year } = data;
-    return MovieStore.create({ title, duration: Number(duration), year: Number(year) });
+    return MovieStore.create({ title, duration: duration !== undefined ? Number(duration) : null, year: year !== undefined ? Number(year) : null })
+      .then(r => r);
   }
 
   static findById(id) {
-    return MovieStore.findById(id);
+    return MovieStore.findById(id).then(r => r);
   }
 
   static update(id, data) {
@@ -25,15 +24,15 @@ class MovieController {
       title: data.title,
       duration: data.duration !== undefined ? Number(data.duration) : undefined,
       year: data.year !== undefined ? Number(data.year) : undefined
-    });
+    }).then(r => r);
   }
 
   static delete(id) {
-    return MovieStore.delete(id);
+    return MovieStore.delete(id).then(r => r);
   }
 
   static last5(sortBy = 'year') {
-    return MovieStore.last5(sortBy);
+    return MovieStore.last5(sortBy).then(r => r);
   }
 }
 

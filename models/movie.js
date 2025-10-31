@@ -1,56 +1,67 @@
-class Movie {
-  constructor({ id, title, duration, year }) {
-    this.id = id;
-    this.title = title;
-    this.duration = duration; // minutes
-    this.year = year;
-  }
-}
+const pool = require('../db/connection');
 
 class MovieStore {
-  static data = [];
-  static nextId = 1;
-
-  static create({ title, duration, year }) {
-    const m = new Movie({ id: this.nextId++, title, duration, year });
-    this.data.push(m);
-    return m;
+  // retorna todos los movies: Promise<Array>
+  static findAll() {
+    return new Promise((resolve, reject) => {
+      pool.query('SELECT id_pelicula, titulo, anio, duracion FROM peliculas')
+        .then(([rows]) => resolve(rows.map(r => ({ id: r.id_pelicula, title: r.titulo, duration: r.duracion, year: r.anio }))))
+        .catch(err => reject(err));
+    });
   }
 
-  static findAll() {
-    return [...this.data];
+  static create({ title, duration, year }) {
+    return new Promise((resolve, reject) => {
+      pool.query('INSERT INTO peliculas (titulo, anio, duracion) VALUES (?, ?, ?)', [title, year || null, duration || null])
+        .then(([result]) => resolve({ id: result.insertId, title, duration: duration ? Number(duration) : null, year: year ? Number(year) : null }))
+        .catch(err => reject(err));
+    });
   }
 
   static findById(id) {
-    return this.data.find(x => x.id === Number(id)) || null;
+    return new Promise((resolve, reject) => {
+      pool.query('SELECT id_pelicula, titulo, anio, duracion FROM peliculas WHERE id_pelicula = ?', [id])
+        .then(([rows]) => {
+          if (rows.length === 0) return resolve(null);
+          const r = rows[0];
+          resolve({ id: r.id_pelicula, title: r.titulo, duration: r.duracion, year: r.anio });
+        })
+        .catch(err => reject(err));
+    });
   }
 
   static update(id, { title, duration, year }) {
-    const m = this.findById(id);
-    if (!m) return null;
-    if (title !== undefined) m.title = title;
-    if (duration !== undefined) m.duration = duration;
-    if (year !== undefined) m.year = year;
-    return m;
+    return new Promise((resolve, reject) => {
+      // build dynamic update
+      const fields = [];
+      const params = [];
+      if (title !== undefined) { fields.push('titulo = ?'); params.push(title); }
+      if (year !== undefined) { fields.push('anio = ?'); params.push(year); }
+      if (duration !== undefined) { fields.push('duracion = ?'); params.push(duration); }
+      if (fields.length === 0) return this.findById(id).then(resolve).catch(reject);
+      params.push(id);
+      pool.query(`UPDATE peliculas SET ${fields.join(', ')} WHERE id_pelicula = ?`, params)
+        .then(() => this.findById(id).then(resolve).catch(reject))
+        .catch(err => reject(err));
+    });
   }
 
   static delete(id) {
-    const idx = this.data.findIndex(x => x.id === Number(id));
-    if (idx === -1) return false;
-    this.data.splice(idx, 1);
-    return true;
+    return new Promise((resolve, reject) => {
+      pool.query('DELETE FROM peliculas WHERE id_pelicula = ?', [id])
+        .then(([result]) => resolve(result.affectedRows > 0))
+        .catch(err => reject(err));
+    });
   }
 
-  // devuelve los primeros 5 según criterio (year o title)
   static last5(sortBy = 'year') {
-    const arr = [...this.data];
-    if (sortBy === 'title') {
-      arr.sort((a, b) => (a.title || '').localeCompare(b.title));
-      return arr.slice(-5).reverse();
-    }
-    // default: por año descendente
-    arr.sort((a, b) => (b.year || 0) - (a.year || 0));
-    return arr.slice(0, 5);
+    return new Promise((resolve, reject) => {
+      let order = 'anio DESC';
+      if (sortBy === 'title') order = 'titulo ASC';
+      pool.query(`SELECT id_pelicula, titulo, anio, duracion FROM peliculas ORDER BY ${order} LIMIT 5`)
+        .then(([rows]) => resolve(rows.map(r => ({ id: r.id_pelicula, title: r.titulo, duration: r.duracion, year: r.anio }))))
+        .catch(err => reject(err));
+    });
   }
 }
 
