@@ -1,42 +1,54 @@
-class Sala {
-  constructor({ id, name, capacity }) {
-    this.id = id;
-    this.name = name;
-    this.capacity = capacity;
-  }
-}
+const pool = require('../db/connection');
 
 class SalaStore {
-  static data = [];
-  static nextId = 1;
-
-  static create({ name, capacity }) {
-    const s = new Sala({ id: this.nextId++, name, capacity });
-    this.data.push(s);
-    return s;
+  static findAll() {
+    return new Promise((resolve, reject) => {
+      pool.query('SELECT id_sala, nombre, capacidad FROM salas')
+        .then(([rows]) => resolve(rows.map(r => ({ id: r.id_sala, name: r.nombre, capacity: r.capacidad }))))
+        .catch(err => reject(err));
+    });
   }
 
-  static findAll() {
-    return [...this.data];
+  static create({ name, capacity }) {
+    return new Promise((resolve, reject) => {
+      pool.query('INSERT INTO salas (nombre, capacidad) VALUES (?, ?)', [name, capacity || null])
+        .then(([result]) => resolve({ id: result.insertId, name, capacity: capacity ? Number(capacity) : null }))
+        .catch(err => reject(err));
+    });
   }
 
   static findById(id) {
-    return this.data.find(x => x.id === Number(id)) || null;
+    return new Promise((resolve, reject) => {
+      pool.query('SELECT id_sala, nombre, capacidad FROM salas WHERE id_sala = ?', [id])
+        .then(([rows]) => {
+          if (rows.length === 0) return resolve(null);
+          const r = rows[0];
+          resolve({ id: r.id_sala, name: r.nombre, capacity: r.capacidad });
+        })
+        .catch(err => reject(err));
+    });
   }
 
   static update(id, { name, capacity }) {
-    const s = this.findById(id);
-    if (!s) return null;
-    if (name !== undefined) s.name = name;
-    if (capacity !== undefined) s.capacity = capacity;
-    return s;
+    return new Promise((resolve, reject) => {
+      const fields = [];
+      const params = [];
+      if (name !== undefined) { fields.push('nombre = ?'); params.push(name); }
+      if (capacity !== undefined) { fields.push('capacidad = ?'); params.push(capacity); }
+      if (fields.length === 0) return this.findById(id).then(resolve).catch(reject);
+      params.push(id);
+      pool.query(`UPDATE salas SET ${fields.join(', ')} WHERE id_sala = ?`, params)
+        .then(() => this.findById(id).then(resolve).catch(reject))
+        .catch(err => reject(err));
+    });
   }
 
   static delete(id) {
-    const idx = this.data.findIndex(x => x.id === Number(id));
-    if (idx === -1) return false;
-    this.data.splice(idx, 1);
-    return true;
+    return new Promise((resolve, reject) => {
+      pool.query('DELETE FROM salas WHERE id_sala = ?', [id])
+        .then(([result]) => resolve(result.affectedRows > 0))
+        .catch(err => reject(err));
+    });
   }
 }
 

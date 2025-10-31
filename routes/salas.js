@@ -4,36 +4,46 @@ const SalaController = require('../controllers/salaController');
 
 // --- API (JSON) ---
 router.get('/api', (req, res) => {
-	const salas = SalaController.index();
-	res.json(salas);
+	SalaController.index()
+		.then(salas => res.json(salas))
+		.catch(err => res.status(500).json({ error: err.message }));
 });
 
 router.post('/api', (req, res) => {
-	const created = SalaController.create(req.body);
-	res.status(201).json(created);
+	SalaController.create(req.body)
+		.then(created => res.status(201).json(created))
+		.catch(err => res.status(500).json({ error: err.message }));
 });
 
 router.get('/api/:id', (req, res) => {
-	const sala = SalaController.findById(req.params.id);
-	if (!sala) return res.status(404).json({ error: 'Not found' });
-	res.json(sala);
+	SalaController.findById(req.params.id)
+		.then(sala => {
+			if (!sala) return res.status(404).json({ error: 'Not found' });
+			res.json(sala);
+		})
+		.catch(err => res.status(500).json({ error: err.message }));
 });
 
 router.put('/api/:id', (req, res) => {
-	const updated = SalaController.update(req.params.id, req.body);
-	if (!updated) return res.status(404).json({ error: 'Not found' });
-	res.json(updated);
+	SalaController.update(req.params.id, req.body)
+		.then(updated => {
+			if (!updated) return res.status(404).json({ error: 'Not found' });
+			res.json(updated);
+		})
+		.catch(err => res.status(500).json({ error: err.message }));
 });
 
 router.delete('/api/:id', (req, res) => {
-	const ok = SalaController.delete(req.params.id);
-	res.json({ deleted: ok });
+	SalaController.delete(req.params.id)
+		.then(ok => res.json({ deleted: ok }))
+		.catch(err => res.status(500).json({ error: err.message }));
 });
 
 // --- Views ---
 router.get('/', (req, res) => {
-	const salas = SalaController.index();
-	res.render('salas/index', { salas });
+	SalaController.index()
+		.then(salas => res.render('salas/index', { salas }))
+		.catch(err => res.status(500).send(err.message));
 });
 
 router.get('/new', (req, res) => {
@@ -41,30 +51,39 @@ router.get('/new', (req, res) => {
 });
 
 router.post('/create', (req, res) => {
-	SalaController.create(req.body);
-	res.redirect('/salas');
+	SalaController.create(req.body)
+		.then(() => res.redirect('/salas'))
+		.catch(err => res.status(500).send(err.message));
 });
 
 router.get('/:id', (req, res) => {
-	const sala = SalaController.findById(req.params.id);
-	if (!sala) return res.status(404).send('Not found');
-	res.render('salas/show', { sala });
+	SalaController.findById(req.params.id)
+		.then(sala => {
+			if (!sala) return res.status(404).send('Not found');
+			res.render('salas/show', { sala });
+		})
+		.catch(err => res.status(500).send(err.message));
 });
 
 router.get('/:id/edit', (req, res) => {
-	const sala = SalaController.editFormData(req.params.id);
-	if (!sala) return res.status(404).send('Not found');
-	res.render('salas/edit', { sala });
+	SalaController.editFormData(req.params.id)
+		.then(sala => {
+			if (!sala) return res.status(404).send('Not found');
+			res.render('salas/edit', { sala });
+		})
+		.catch(err => res.status(500).send(err.message));
 });
 
 router.post('/:id/update', (req, res) => {
-	SalaController.update(req.params.id, req.body);
-	res.redirect('/salas');
+	SalaController.update(req.params.id, req.body)
+		.then(() => res.redirect('/salas'))
+		.catch(err => res.status(500).send(err.message));
 });
 
 router.post('/:id/delete', (req, res) => {
-	SalaController.delete(req.params.id);
-	res.redirect('/salas');
+	SalaController.delete(req.params.id)
+		.then(() => res.redirect('/salas'))
+		.catch(err => res.status(500).send(err.message));
 });
 
 module.exports = router;
